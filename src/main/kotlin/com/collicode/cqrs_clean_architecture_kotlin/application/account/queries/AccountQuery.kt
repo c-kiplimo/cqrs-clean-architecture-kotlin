@@ -1,0 +1,3 @@
+package com.collicode.cqrs_clean_architecture_kotlin.application.account.queries
+
+sealed interface AccountQuery

@@ -1,0 +1,134 @@
+package com.collicode.cqrs_clean_architecture_kotlin.application.account.services
+
+import arrow.core.Either
+import com.collicode.common.exception.errors.AppError
+import com.collicode.common.scope.eitherScope
+import com.collicode.common.serializer.Serializer
+import com.collicode.cqrs_clean_architecture_kotlin.application.account.commands.*
+import com.collicode.cqrs_clean_architecture_kotlin.application.account.events.*
+import com.collicode.cqrs_clean_architecture_kotlin.application.account.persistance.AccountRepository
+import com.collicode.cqrs_clean_architecture_kotlin.application.common.clients.EmailVerifierClient
+import com.collicode.cqrs_clean_architecture_kotlin.application.common.clients.PaymentClient
+import com.collicode.cqrs_clean_architecture_kotlin.application.common.publisher.EventPublisher
+import com.collicode.cqrs_clean_architecture_kotlin.application.outbox.persitence.OutboxRepository
+import com.collicode.cqrs_clean_architecture_kotlin.domain.account.valueobjects.AccountId
+import com.collicode.cqrs_clean_architecture_kotlin.domain.outbox.OutboxEvent
+import io.github.oshai.kotlinlogging.KotlinLogging
+
+
+import kotlinx.coroutines.*
+import org.springframework.stereotype.Service
+import org.springframework.transaction.reactive.TransactionalOperator
+import org.springframework.transaction.reactive.executeAndAwait
+
+@Service
+class AccountCommandServiceImpl(
+    private val accountRepository: AccountRepository,
+    private val outboxRepository: OutboxRepository,
+    private val tx: TransactionalOperator,
+    private val eventPublisher: EventPublisher,
+    private val serializer: Serializer,
+    private val emailVerifierClient: EmailVerifierClient,
+    private val paymentClient: PaymentClient
+) : AccountCommandService {
+
+    override suspend fun handle(command: CreateAccountCommand): Either<AppError, AccountId> = eitherScope(ctx) {
+        emailVerifierClient.verifyEmail(command.contactInfo.email).bind()
+
+        val (account, event) = tx.executeAndAwait {
+            val account = accountRepository.save(command.toAccount()).bind()
+            val event = outboxRepository.insert(account.toAccountCreatedOutboxEvent(serializer)).bind()
+            account to event
+        }
+
+        publisherScope.launch { publishOutboxEvent(event) }
+        account.accountId
+    }
+
+
+    override suspend fun handle(command: ChangeAccountStatusCommand): Either<AppError, Unit> = eitherScope(ctx) {
+        val event = tx.executeAndAwait {
+            val foundAccount = accountRepository.getById(command.accountId).bind()
+            foundAccount.updateStatus(command.status).bind()
+
+            val account = accountRepository.update(foundAccount).bind()
+            val event = account.toStatusChangedOutboxEvent(serializer)
+            outboxRepository.insert(event).bind()
+        }
+
+        publisherScope.launch { publishOutboxEvent(event) }
+    }
+
+    override suspend fun handle(command: ChangeContactInfoCommand): Either<AppError, Unit> = eitherScope(ctx) {
+        val event = tx.executeAndAwait {
+            val foundAccount = accountRepository.getById(command.accountId).bind()
+            foundAccount.changeContactInfo(command.contactInfo).bind()
+
+            val account = accountRepository.update(foundAccount).bind()
+            val event = account.toContactInfoChangedOutboxEvent(serializer)
+            outboxRepository.insert(event).bind()
+        }
+
+        publisherScope.launch { publishOutboxEvent(event) }
+    }
+
+    override suspend fun handle(command: DepositBalanceCommand): Either<AppError, Unit> = eitherScope(ctx) {
+        paymentClient.verifyPaymentTransaction(command.accountId.string(), command.transactionId).bind()
+
+        val event = tx.executeAndAwait {
+            val foundAccount = accountRepository.getById(command.accountId).bind()
+            foundAccount.depositBalance(command.balance).bind()
+
+            val account = accountRepository.update(foundAccount).bind()
+            val event = account.toBalanceDepositedOutboxEvent(command.balance, serializer)
+            outboxRepository.insert(event).bind()
+        }
+
+        publisherScope.launch { publishOutboxEvent(event) }
+    }
+
+    override suspend fun handle(command: WithdrawBalanceCommand): Either<AppError, Unit> = eitherScope(ctx) {
+        paymentClient.verifyPaymentTransaction(command.accountId.string(), command.transactionId).bind()
+
+        val event = tx.executeAndAwait {
+            val foundAccount = accountRepository.getById(command.accountId).bind()
+            foundAccount.withdrawBalance(command.balance).bind()
+
+            val account = accountRepository.update(foundAccount).bind()
+            val event = account.toBalanceWithdrawOutboxEvent(command.balance, serializer)
+            outboxRepository.insert(event).bind()
+        }
+
+        publisherScope.launch { publishOutboxEvent(event) }
+    }
+
+    override suspend fun handle(command: UpdatePersonalInfoCommand): Either<AppError, Unit> = eitherScope(ctx) {
+        val event = tx.executeAndAwait {
+            val foundAccount = accountRepository.getById(command.accountId).bind()
+            foundAccount.changePersonalInfo(command.personalInfo).bind()
+
+            val account = accountRepository.update(foundAccount).bind()
+            val event = account.toPersonalInfoUpdatedOutboxEvent(serializer)
+            outboxRepository.insert(event).bind()
+        }
+
+        publisherScope.launch { publishOutboxEvent(event) }
+    }
+
+
+    private suspend fun publishOutboxEvent(event: OutboxEvent): Either<AppError, OutboxEvent> = eitherScope {
+        outboxRepository.deleteWithLock(event) { eventPublisher.publish(event) }.bind()
+    }
+        .onRight { log.info { "outbox event has been published and deleted: $it" } }
+        .onLeft { log.error { "error while publishing outbox event: ${event.eventId}, error: $it" } }
+
+
+    private val ctx = Job() + CoroutineName(this::class.java.name) + Dispatchers.IO
+    private val publisherScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + CoroutineName(this::class.java.name))
+
+    private companion object {
+        private val log = KotlinLogging.logger { }
+    }
+}
+
+
