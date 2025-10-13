@@ -1,18 +1,17 @@
-package com.alexander.bryksin.kotlinspringcleanarchitecture.infrastructure.account.persistance.repository
+package com.collicode.cqrs_clean_architecture_kotlin.infrastructure.account.persistence.mongo.repository
 
 import arrow.core.Either
 import arrow.fx.coroutines.parZip
+import com.collicode.common.exception.errors.*
+import com.collicode.common.scope.eitherScope
 import com.collicode.cqrs_clean_architecture_kotlin.application.account.models.AccountsList
 import com.collicode.cqrs_clean_architecture_kotlin.application.account.persistance.AccountProjectionRepository
-import com.alexander.bryksin.kotlinspringcleanarchitecture.domain.account.errors.AccountNotFoundError
-import com.alexander.bryksin.kotlinspringcleanarchitecture.domain.account.errors.AppError
-import com.alexander.bryksin.kotlinspringcleanarchitecture.domain.account.models.Account
-import com.alexander.bryksin.kotlinspringcleanarchitecture.domain.account.valueObjects.AccountId
-import com.alexander.bryksin.kotlinspringcleanarchitecture.domain.common.scope.eitherScope
-import com.alexander.bryksin.kotlinspringcleanarchitecture.infrastructure.account.persistance.entity.AccountDocument
-import com.alexander.bryksin.kotlinspringcleanarchitecture.infrastructure.account.persistance.entity.toAccount
-import com.alexander.bryksin.kotlinspringcleanarchitecture.infrastructure.account.persistance.entity.toBsonUpdate
-import com.alexander.bryksin.kotlinspringcleanarchitecture.infrastructure.account.persistance.entity.toDocument
+import com.collicode.cqrs_clean_architecture_kotlin.domain.account.Account
+import com.collicode.cqrs_clean_architecture_kotlin.domain.account.valueobjects.AccountId
+import com.collicode.cqrs_clean_architecture_kotlin.infrastructure.account.persistence.mongo.entity.AccountDocument
+import com.collicode.cqrs_clean_architecture_kotlin.infrastructure.account.persistence.mongo.entity.toAccount
+import com.collicode.cqrs_clean_architecture_kotlin.infrastructure.account.persistence.mongo.entity.toBsonUpdate
+import com.collicode.cqrs_clean_architecture_kotlin.infrastructure.account.persistence.mongo.entity.toDocument
 import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.FindOneAndUpdateOptions

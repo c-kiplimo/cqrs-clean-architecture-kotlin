@@ -1,0 +1,122 @@
+spring:
+  application:
+    name: account_microservice
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/microservices
+    username: postgres
+    password: smartcode
+
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/microservices
+    username: postgres
+    password: smartcode
+    pool:
+      enabled: true
+      initial-size: 5
+      max-size: 10
+      max-idle-time: 10m
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    client-id: account-microservice-client
+    consumer:
+      group-id: account_microservice_group_id
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      max-poll-records: 500
+    producer:
+      acks: all
+      retries: 3
+    listener:
+      missing-topics-fatal: false
+
+  flyway:
+    baseline-on-migrate: true
+    enabled: true
+    user: "postgres"
+    password: "smartcode"
+    url: "jdbc:postgresql://localhost:5432/microservices"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+logging:
+  level:
+    io.r2dbc.postgresql.PARAM: debug
+    io.r2dbc.postgresql.QUERY: debug
+    org.apache.kafka: warn
+
+springdoc:
+  use-management-port: false
+
+schedulers:
+  outbox:
+    enable: true
+    initialDelayMillis: 3000
+    fixedRate: 1000
+    batchSize: 10
+
+mongo:
+  mongoURI: mongodb://mongo:smartcode@54.162.184.160:27017/accounts?authSource=admin&maxPoolSize=20&w=majority
+
+topics:
+  accountCreated:
+    name: account-created-v1
+    partitions: 3
+    replication: 1
+  accountCreatedRetry:
+    name: account-created-v1-retry
+    partitions: 3
+    replication: 1
+  accountStatusChanged:
+    name: account-status-changed-v1
+    partitions: 3
+    replication: 1
+  accountStatusChangedRetry:
+    name: account-status-changed-v1-retry
+    partitions: 3
+    replication: 1
+  accountBalanceDeposited:
+    name: account-balance-deposited-v1
+    partitions: 3
+    replication: 1
+  accountBalanceDepositedRetry:
+    name: account-balance-deposited-v1-retry
+    partitions: 3
+    replication: 1
+  accountBalanceWithdraw:
+    name: account-balance-withdraw-v1
+    partitions: 3
+    replication: 1
+  accountBalanceWithdrawRetry:
+    name: account-balance-withdraw-v1-retry
+    partitions: 3
+    replication: 1
+  accountContactInfoChanged:
+    name: account-contact-info-changed-v1
+    partitions: 3
+    replication: 1
+  accountContactInfoChangedRetry:
+    name: account-contact-info-changed-v1-retry
+    partitions: 3
+    replication: 1
+  accountInfoUpdated:
+    name: account-info-updated-v1
+    partitions: 3
+    replication: 1
+  accountInfoUpdatedRetry:
+    name: account-info-updated-v1-retry
+    partitions: 3
+    replication: 1
+  deadLetterQueue:
+    name: dead-letter-queue
+    partitions: 3
+    replication: 1
+
+id-info:
+  datacenter: 1
+  machine-id: 1

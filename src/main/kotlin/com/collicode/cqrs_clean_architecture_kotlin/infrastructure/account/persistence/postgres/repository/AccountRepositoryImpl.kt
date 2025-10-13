@@ -1,12 +1,17 @@
 package com.collicode.cqrs_clean_architecture_kotlin.infrastructure.account.persistence.postgres.repository
 
 import arrow.core.Either
+import com.collicode.common.exception.errors.AccountNotFoundError
+import com.collicode.common.exception.errors.AppError
+import com.collicode.common.scope.eitherScope
 import com.collicode.cqrs_clean_architecture_kotlin.application.account.persistance.AccountRepository
-import com.alexander.bryksin.kotlinspringcleanarchitecture.domain.account.errors.AccountNotFoundError
-import com.alexander.bryksin.kotlinspringcleanarchitecture.domain.account.errors.AppError
-import com.alexander.bryksin.kotlinspringcleanarchitecture.domain.account.models.Account
-import com.alexander.bryksin.kotlinspringcleanarchitecture.domain.account.valueObjects.AccountId
-import com.alexander.bryksin.kotlinspringcleanarchitecture.domain.common.scope.eitherScope
+import com.collicode.cqrs_clean_architecture_kotlin.domain.account.Account
+import com.collicode.cqrs_clean_architecture_kotlin.domain.account.valueobjects.AccountId
+import com.collicode.cqrs_clean_architecture_kotlin.infrastructure.account.persistence.postgres.mapper.toAccount
+import com.collicode.cqrs_clean_architecture_kotlin.infrastructure.account.persistence.postgres.mapper.toPostgresEntityMap
+import com.collicode.cqrs_clean_architecture_kotlin.infrastructure.account.persistence.postgres.sql.GET_ACCOUNT_BY_ID_QUERY
+import com.collicode.cqrs_clean_architecture_kotlin.infrastructure.account.persistence.postgres.sql.INSERT_ACCOUNT_QUERY
+import com.collicode.cqrs_clean_architecture_kotlin.infrastructure.account.persistence.postgres.sql.OPTIMISTIC_UPDATE_QUERY
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers

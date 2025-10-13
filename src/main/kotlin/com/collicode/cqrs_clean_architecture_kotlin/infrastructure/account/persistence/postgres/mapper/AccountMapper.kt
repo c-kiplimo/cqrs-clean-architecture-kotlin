@@ -1,7 +1,7 @@
 package com.collicode.cqrs_clean_architecture_kotlin.infrastructure.account.persistence.postgres.mapper
 
-import com.alexander.bryksin.kotlinspringcleanarchitecture.domain.account.models.Account
-import com.alexander.bryksin.kotlinspringcleanarchitecture.domain.account.valueObjects.*
+import com.collicode.cqrs_clean_architecture_kotlin.domain.account.Account
+import com.collicode.cqrs_clean_architecture_kotlin.domain.account.valueobjects.*
 import io.r2dbc.spi.Row
 import java.math.BigInteger
 import java.time.Instant

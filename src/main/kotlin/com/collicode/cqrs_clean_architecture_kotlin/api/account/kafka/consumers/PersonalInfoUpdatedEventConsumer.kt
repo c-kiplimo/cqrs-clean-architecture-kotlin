@@ -1,0 +1,58 @@
+package com.collicode.cqrs_clean_architecture_kotlin.api.account.kafka.consumers
+
+import com.collicode.cqrs_clean_architecture_kotlin.api.account.kafka.processor.EventProcessor
+import com.collicode.cqrs_clean_architecture_kotlin.api.configuration.kafka.KafkaTopics
+import com.collicode.cqrs_clean_architecture_kotlin.application.account.events.PersonalInfoUpdatedEvent
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.springframework.kafka.annotation.KafkaListener
+import org.springframework.kafka.support.Acknowledgment
+import org.springframework.stereotype.Component
+
+
+@Component
+class PersonalInfoUpdatedEventConsumer(
+    private val eventProcessor: EventProcessor,
+    private val kafkaTopics: KafkaTopics
+) {
+
+    @KafkaListener(
+        groupId = "\${kafka.consumer-group-id:account_microservice_group_id}",
+        topics = ["\${topics.accountInfoUpdated.name}"],
+    )
+    fun process(ack: Acknowledgment, record: ConsumerRecord<String, ByteArray>) = eventProcessor.process(
+        ack = ack,
+        consumerRecord = record,
+        deserializationClazz = PersonalInfoUpdatedEvent::class.java,
+        onError = eventProcessor.retryHandler(kafkaTopics.accountInfoUpdatedRetry.name, DEFAULT_RETRY_COUNT)
+    ) { event ->
+        eventProcessor.on(
+            ack = ack,
+            consumerRecord = record,
+            event = event,
+            retryTopic = kafkaTopics.accountInfoUpdatedRetry.name
+        )
+    }
+
+    @KafkaListener(
+        groupId = "\${kafka.consumer-group-id:account_microservice_group_id}",
+        topics = ["\${topics.accountInfoUpdatedRetry.name}"],
+    )
+    fun processRetry(ack: Acknowledgment, record: ConsumerRecord<String, ByteArray>) = eventProcessor.process(
+        ack = ack,
+        consumerRecord = record,
+        deserializationClazz = PersonalInfoUpdatedEvent::class.java,
+        onError = eventProcessor.retryHandler(kafkaTopics.accountInfoUpdatedRetry.name, DEFAULT_RETRY_COUNT)
+    ) { event ->
+        eventProcessor.on(
+            ack = ack,
+            consumerRecord = record,
+            event = event,
+            retryTopic = kafkaTopics.accountInfoUpdatedRetry.name
+        )
+    }
+
+
+    private companion object {
+        private const val DEFAULT_RETRY_COUNT = 3
+    }
+}
